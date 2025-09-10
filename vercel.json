@@ -4,6 +4,12 @@
       "src": "api/update-leaderboard.js",
       "use": "@vercel/node"
     }
+  ],
+  "routes": [
+    {
+      "src": "/api/update-leaderboard",
+      "dest": "/api/update-leaderboard.js"
+    }
   ]
 }
 

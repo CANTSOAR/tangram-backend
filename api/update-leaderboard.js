@@ -1,59 +1,55 @@
 import { put } from '@vercel/blob';
-import { NextResponse } from 'next/server';
-
-// Vercel specific runtime configuration. 'edge' is recommended for performance.
-export const runtime = 'edge';
-
-// --- CORS HEADERS ---
-// These headers are essential to allow your game to communicate with this API.
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', // Allows any origin to access the API
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', // Specifies allowed methods
-  'Access-Control-Allow-Headers': 'Content-Type', // Specifies allowed headers
-};
 
 /**
- * Handles OPTIONS preflight requests for CORS.
- * Browsers send this automatically before a POST request to a different domain.
+ * This is a Vercel Serverless Function that uses the standard Node.js runtime.
+ * It does not use Next.js or Edge Function syntax.
+ * @param {import('http').IncomingMessage} request
+ * @param {import('http').ServerResponse} response
  */
-export async function OPTIONS(request) {
-  // Respond with just the CORS headers to confirm the connection is allowed.
-  return new Response(null, {
-    status: 204, // No Content
-    headers: corsHeaders,
-  });
-}
+export default async function handler(request, response) {
+  // --- CORS HEADERS ---
+  // Manually set headers for the Node.js runtime
+  response.setHeader('Access-Control-Allow-Origin', '*');
+  response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+  // Handle the browser's preflight OPTIONS request
+  if (request.method === 'OPTIONS') {
+    response.status(204).end();
+    return;
+  }
 
-/**
- * This API endpoint handles POST requests to update the leaderboard data.
- */
-export async function POST(request) {
-  try {
-    const leaderboardData = await request.json();
+  // Only handle POST requests for updating the leaderboard
+  if (request.method === 'POST') {
+    try {
+      // Vercel's Node.js runtime automatically parses the JSON body
+      const leaderboardData = request.body;
 
-    if (!leaderboardData) {
-      return NextResponse.json({ error: 'No leaderboard data provided.' }, { status: 400, headers: corsHeaders });
+      if (!leaderboardData) {
+        response.status(400).json({ error: 'No leaderboard data provided.' });
+        return;
+      }
+
+      const blobName = 'leaderboard.json';
+      const blobContent = JSON.stringify(leaderboardData, null, 2);
+
+      // Upload the file to Vercel Blob
+      const { url } = await put(blobName, blobContent, {
+        access: 'public',
+        addRandomSuffix: false,
+      });
+
+      // Send a success response
+      response.status(200).json({ message: 'Leaderboard updated successfully!', url });
+
+    } catch (error) {
+      console.error('Error in API function:', error);
+      response.status(500).json({ error: 'Failed to upload leaderboard.' });
     }
-
-    const blobName = 'leaderboard.json';
-    const blobContent = JSON.stringify(leaderboardData, null, 2); 
-
-    const { url } = await put(blobName, blobContent, {
-      access: 'public',
-      addRandomSuffix: false, 
-    });
-
-    // On success, return a success message and include the CORS headers.
-    return NextResponse.json({ message: 'Leaderboard updated successfully!', url }, {
-        status: 200,
-        headers: corsHeaders
-    });
-
-  } catch (error) {
-    console.error('Error updating leaderboard:', error);
-    // On failure, return an error message and include the CORS headers.
-    return NextResponse.json({ error: 'Failed to upload leaderboard.' }, { status: 500, headers: corsHeaders });
+  } else {
+    // If the method is not POST or OPTIONS, return 'Method Not Allowed'
+    response.setHeader('Allow', ['POST', 'OPTIONS']);
+    response.status(405).end(`Method ${request.method} Not Allowed`);
   }
 }
 

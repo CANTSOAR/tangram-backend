@@ -4,6 +4,25 @@ import { NextResponse } from 'next/server';
 // Vercel specific runtime configuration. 'edge' is recommended for performance.
 export const runtime = 'edge';
 
+// Common headers for CORS
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+/**
+ * Handles OPTIONS preflight requests for CORS.
+ * The browser sends this request first to ensure the server allows the subsequent POST request.
+ */
+export async function OPTIONS(request) {
+  return new Response(null, {
+    status: 204, // No Content
+    headers: corsHeaders,
+  });
+}
+
+
 /**
  * This API endpoint handles POST requests to update the leaderboard data.
  * It receives the entire leaderboard object, converts it to a JSON string,
@@ -16,35 +35,29 @@ export async function POST(request) {
 
     // Basic validation to ensure data was sent.
     if (!leaderboardData) {
-      return NextResponse.json({ error: 'No leaderboard data provided.' }, { status: 400 });
+      return NextResponse.json({ error: 'No leaderboard data provided.' }, { status: 400, headers: corsHeaders });
     }
 
     // 2. Define the blob's filename and prepare the content.
-    // We stringify the JSON object to store it as a text file.
     const blobName = 'leaderboard.json';
-    const blobContent = JSON.stringify(leaderboardData, null, 2); // Using null, 2 for pretty-printing
+    const blobContent = JSON.stringify(leaderboardData, null, 2); 
 
     // 3. Upload the new leaderboard data to Vercel Blob.
     const { url } = await put(blobName, blobContent, {
-      access: 'public', // The file needs to be public so your game can fetch it directly.
-      addRandomSuffix: false, // CRITICAL: This ensures the URL is stable and predictable.
+      access: 'public',
+      addRandomSuffix: false, 
     });
 
-    // 4. On success, return the public URL of the updated file.
-    return NextResponse.json({ message: 'Leaderboard updated successfully!', url });
+    // 4. On success, return the public URL of the updated file with CORS headers.
+    return NextResponse.json({ message: 'Leaderboard updated successfully!', url }, {
+        status: 200,
+        headers: corsHeaders
+    });
 
   } catch (error) {
     // 5. Handle any potential errors during the process.
     console.error('Error updating leaderboard:', error);
-    return NextResponse.json({ error: 'Failed to upload leaderboard.' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to upload leaderboard.' }, { status: 500, headers: corsHeaders });
   }
 }
 
-/**
- * Optional: You can add a GET handler to this same file if you want
- * to proxy requests instead of fetching the blob URL directly, but for
- * this use case, fetching the public URL from the frontend is simpler.
- */
-export async function GET(request) {
-    return NextResponse.json({ message: 'This endpoint is for POST requests to update the leaderboard.' });
-}

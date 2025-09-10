@@ -1,7 +1,9 @@
 {
-  "functions": {
-    "api/update-leaderboard.js": {
-      "runtime": "nodejs18.x"
+  "builds": [
+    {
+      "src": "api/update-leaderboard.js",
+      "use": "@vercel/node"
     }
-  }
+  ]
 }
+

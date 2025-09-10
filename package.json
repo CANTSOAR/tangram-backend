@@ -11,6 +11,8 @@
   "license": "ISC",
   "dependencies": {
     "@vercel/blob": "^0.23.2"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
-
